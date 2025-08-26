@@ -1,31 +1,42 @@
 version: '3.8'
 
 services:
+  taskmanager-frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: taskmanager-frontend
+    ports:
+      - "3000:80"
+    depends_on:
+      - taskmanager-backend
+
+  taskmanager-backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: taskmanager-backend
+    environment:
+      - SPRING_DATASOURCE_URL=jdbc:mysql://taskmanager-db:3306/taskdb?allowPublicKeyRetrieval=true&useSSL=false
+      - SPRING_DATASOURCE_USERNAME=app_user
+      - SPRING_DATASOURCE_PASSWORD=${APPUSER_PASSWORD}
+    ports:
+      - "8080:8080"
+    depends_on:
+      - taskmanager-db
+
   taskmanager-db:
     image: mysql:8.0
     container_name: taskmanager-db
-    restart: always
     environment:
       MYSQL_DATABASE: taskdb
       MYSQL_USER: app_user
-      MYSQL_PASSWORD: ${APPUSER_PASSWORD:-defaultpassword}
-      MYSQL_ROOT_PASSWORD: root
+      MYSQL_PASSWORD: ${APPUSER_PASSWORD}
+      MYSQL_ROOT_PASSWORD: rootpassword
     ports:
       - "3306:3306"
     volumes:
-      - db_data:/var/lib/mysql
-
-  taskmanager-api:
-    build:
-      context: .
-      dockerfile: Dockerfile
-    container_name: taskmanager-api
-    depends_on:
-      - taskmanager-db
-    environment:
-      APPUSER_PASSWORD: ${APPUSER_PASSWORD:-defaultpassword}
-    ports:
-      - "8080:8080"
+      - mysql_data:/var/lib/mysql
 
 volumes:
-  db_data:
+  mysql_data:
