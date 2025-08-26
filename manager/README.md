@@ -36,3 +36,5 @@ GRANT ALL PRIVILEGES ON taskdb.tasks TO 'app_user'@'%';
 -- Apply the privileges
 FLUSH PRIVILEGES;
 ```
+
+For this example you've to enable the liquibase migration to run it (since we will do it just once) in real life you will disable it and create a script within the build to run it
