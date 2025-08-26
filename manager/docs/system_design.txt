@@ -1,0 +1,74 @@
+Functional Requirements
+	A user should be able to:
+	- Create a new task (with a title)
+	- See their list of tasks
+	- Mark as complete
+	= Edit and delete a task
+
+	-- Out of Scope ---
+	- Using Spring Gateway or k8s Ingress for load balancing and rate limiting
+	- Using Vault to store user credentials
+	- Advanced Filtering and Pagination
+
+
+NonFunctional Requirements
+	Low Latency: Response time less than 200ms
+	High Availability
+	The application should be able to deploy in a containerized way
+	The application should be Production Grade
+
+	-- Out of Scope ---
+	Login and Authentication using OAuth2
+	Generate Metrics for pods Autoscaling (Microserviceds + DB Instances)
+	Application alerts based on metrics
+	Observability using Opensearch + Graphana Dashboards
+	Load tests using Gatling
+	Dates will be used as LocalDateTime to keep it simple
+
+
+Entities
+	Task (id, title, description, status, deadline)
+
+APIs
+	POST /tasks/{taskId}  -> {taskId, getUrl}
+	Body: {id, title, description, status, deadlined}
+
+	GET /tasks -> {taskId, title, description, status, deadline, putUrl, deleteUrl}
+
+	PUT /tasks/{taskId} {id, title, description, status, deadlined} -> {taskId, getUrl}
+	Body: Optionally any of {title, description, status, deadlined}
+
+	DELETE /tasks/{taskId} -> { getUrl}
+
+High Level Design
+	Create Flow
+		<Client>-><Task Service>: Create a new task
+		<Task Service>-><MysqlDB>
+
+	Get Flow
+		<Client>-><Task Service>: Get all tasks
+		<Task Service>-><MysqlDB>
+
+	Put Flow
+		<Client>-><Task Service>: Update a task
+		<Task Service>-><MysqlDB>
+
+	Delete Flow
+		<Client>-><Task Service>: Delete a task
+		<Task Service>-><MysqlDB>
+
+Deep Dives
+	Low Latency
+		The application is fast enough already for higher volumes of data pagination should be implemented
+
+	Production Grade
+		Backend:
+			Used Open API + Swagger (Data validations through schema constraints)
+			Used LiquidBase Migrations
+			Generated UnitTests for fast feedback and acceptance tests on demand using test containers
+			Used Github Actions for Deployment
+			DB Password definition through environment variable
+		Frontend:
+			Used Prettier, Linting, OWASP (vulnerabilities) plugins
+			Highly reactive screen, the amount of rows shown in the table is recalculated whenever the window size changes
+			Generated tests for Table and TaskDetails Interaction - Responsiveness

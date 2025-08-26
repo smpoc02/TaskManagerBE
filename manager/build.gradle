@@ -1,0 +1,141 @@
+plugins {
+	id 'java'
+	id 'org.springframework.boot' version '3.5.5'
+	id 'io.spring.dependency-management' version '1.1.7'
+	id 'org.openapi.generator' version '7.4.0'
+	id 'org.liquibase.gradle' version '2.1.1'
+}
+
+group = 'com.sdmd.taskmanager'
+version = '0.0.1'
+description = 'Demo project for Spring Boot'
+
+tasks.named('bootJar') {
+	archiveBaseName.set('taskManager')
+}
+
+java {
+	toolchain {
+		languageVersion = JavaLanguageVersion.of(17)
+	}
+}
+
+dependencyManagement {
+	imports {
+		mavenBom "org.springframework.boot:spring-boot-dependencies:3.5.5"
+	}
+}
+
+repositories {
+	mavenCentral()
+}
+
+springBoot {
+	mainClass = 'com.sdmd.taskmanager.ManagerApplication'
+}
+
+dependencies {
+	implementation 'org.springframework.boot:spring-boot-starter-data-jpa'
+	implementation 'org.springframework.boot:spring-boot-starter-web'
+	implementation 'org.springframework.boot:spring-boot-starter-security'
+	testImplementation 'org.springframework.boot:spring-boot-starter-test'
+	testImplementation 'org.springframework.security:spring-security-test'
+	implementation 'org.springframework.boot:spring-boot-starter-actuator'
+	implementation 'org.springdoc:springdoc-openapi-starter-webmvc-ui:2.8.9'
+
+	implementation 'org.springframework.boot:spring-boot-starter-validation'
+	implementation 'com.fasterxml.jackson.datatype:jackson-datatype-jsr310'
+	implementation 'org.openapitools:jackson-databind-nullable:0.2.1'
+	implementation 'jakarta.annotation:jakarta.annotation-api:2.1.1'
+
+	testImplementation 'org.testcontainers:junit-jupiter:1.19.7'
+	testImplementation 'org.testcontainers:mysql:1.19.7'
+	implementation 'org.liquibase:liquibase-core'
+	implementation 'mysql:mysql-connector-java:8.0.33'
+
+	compileOnly 'org.projectlombok:lombok:1.18.32'
+	annotationProcessor 'org.projectlombok:lombok:1.18.32'
+
+	testCompileOnly 'org.projectlombok:lombok:1.18.32'
+	testAnnotationProcessor 'org.projectlombok:lombok:1.18.32'
+
+	implementation 'org.mapstruct:mapstruct:1.5.5.Final'
+	annotationProcessor 'org.mapstruct:mapstruct-processor:1.5.5.Final'
+
+	testImplementation 'org.springframework.boot:spring-boot-starter-test'
+	testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
+}
+
+
+openApiGenerate {
+	generatorName = "spring"
+	inputSpec = "$rootDir/src/main/resources/openapi.yaml"
+	outputDir = "$buildDir/generated"
+	apiPackage = "com.sdmd.taskmanager.api"
+	modelPackage = "com.sdmd.taskmanager.model"
+
+	generateModelTests = false
+	generateApiTests = false
+	modelNameSuffix = ""
+
+
+	configOptions = [
+			dateLibrary: "java8",
+			interfaceOnly: "false",
+			useBeanValidation: "true",
+			useJakartaEe: "true"
+	]
+}
+task cleanApiUtil(type: Delete) {
+	delete "$buildDir/generated/src/main/java/com/sdmd/taskmanager/api/ApiUtil.java"
+}
+
+tasks.named("openApiGenerate") {
+	finalizedBy(cleanApiUtil)
+}
+
+compileJava.dependsOn tasks.openApiGenerate
+
+liquibase {
+	activities {
+		main {
+			changeLogFile 'src/main/resources/db/changelog/db.changelog-master.yaml'
+			url System.getenv('LIQUIBASE_URL') ?: 'jdbc:mysql://localhost:3306/taskdb'
+			username System.getenv('LIQUIBASE_USER') ?: 'root'
+			password System.getenv('LIQUIBASE_PASS') ?: 'root'
+			driver 'com.mysql.cj.jdbc.Driver'
+		}
+	}
+	runList = 'main'
+}
+
+tasks.register('runMigration') {
+	group = 'database'
+	description = 'Runs Liquibase migrations against the configured database.'
+	dependsOn 'update'
+}
+
+
+sourceSets {
+	main {
+		java {
+			srcDir "$buildDir/generated/src/main/java"
+		}
+	}
+}
+
+tasks.named('test') {
+	useJUnitPlatform {
+		excludeTags 'acceptance'
+	}
+}
+tasks.register('acceptanceTest', Test) {
+	useJUnitPlatform {
+		includeTags 'acceptance'
+	}
+	description = 'Runs acceptance (Testcontainers) tests'
+	group = 'verification'
+
+	testClassesDirs = sourceSets.test.output.classesDirs
+	classpath = sourceSets.test.runtimeClasspath
+}
